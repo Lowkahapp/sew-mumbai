@@ -139,7 +139,7 @@ export default function CustomerSearch() {
         </button>
       </div>
 
-      {showMap && !loading && tailors.length > 0 && (
+      {showMap && !loading && (
         <TailorMap
           tailors={tailors}
           center={mapCenter}
