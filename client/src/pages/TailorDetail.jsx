@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LocalitySelect from '../components/LocalitySelect';
 import StarRating from '../components/StarRating';
+import { garmentLabel } from '../components/MeasurementGuide';
 
 export default function TailorDetail() {
   const { id } = useParams();
@@ -16,6 +17,8 @@ export default function TailorDetail() {
   const [locality, setLocality] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [measurementId, setMeasurementId] = useState('');
+  const [savedMeasurements, setSavedMeasurements] = useState([]);
   const [bookingMsg, setBookingMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,6 +33,23 @@ export default function TailorDetail() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'customer') {
+      setSavedMeasurements([]);
+      setMeasurementId('');
+      return;
+    }
+    api
+      .get('/measurements/me')
+      .then(({ data }) => {
+        const list = data.measurements || [];
+        setSavedMeasurements(list);
+        const preferred = list.find((m) => m.isDefault) || list[0];
+        setMeasurementId(preferred?._id || '');
+      })
+      .catch(() => setSavedMeasurements([]));
+  }, [user]);
 
   const book = async (e) => {
     e.preventDefault();
@@ -50,6 +70,7 @@ export default function TailorDetail() {
         locality,
         preferredDate,
         notes,
+        measurementId: measurementId || undefined,
       });
       setBookingMsg('Booking requested! Track it on your dashboard.');
       setTimeout(() => navigate('/dashboard'), 800);
@@ -71,8 +92,23 @@ export default function TailorDetail() {
     <div className="space-y-8">
       <div className="overflow-hidden rounded-[1.75rem] bg-navy text-white">
         <div className="bg-gradient-to-r from-navy via-navy-700 to-saffron/70 px-6 py-10 sm:px-8">
-          <p className="text-sm font-medium text-white/70">{tailor.locality}</p>
-          <h1 className="mt-1 font-display text-3xl font-bold sm:text-4xl">{name}</h1>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            {tailor.profileImageUrl ? (
+              <img
+                src={tailor.profileImageUrl}
+                alt=""
+                className="h-20 w-20 shrink-0 rounded-2xl border-2 border-white/20 object-cover"
+              />
+            ) : (
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-white/20 bg-white/10 text-2xl font-display font-bold">
+                {name.charAt(0)}
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-medium text-white/70">{tailor.locality}</p>
+              <h1 className="mt-1 font-display text-3xl font-bold sm:text-4xl">{name}</h1>
+            </div>
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
             <StarRating value={tailor.averageRating || 0} readOnly />
             <span className="text-white/70">
@@ -189,6 +225,33 @@ export default function TailorDetail() {
                 onChange={(e) => setPreferredDate(e.target.value)}
                 required
               />
+            </div>
+            <div>
+              <label className="label">Saved measurements</label>
+              {user?.role === 'customer' ? (
+                <>
+                  <select
+                    className="input"
+                    value={measurementId}
+                    onChange={(e) => setMeasurementId(e.target.value)}
+                  >
+                    <option value="">None — add notes only</option>
+                    {savedMeasurements.map((m) => (
+                      <option key={m._id} value={m._id}>
+                        {m.label} ({garmentLabel(m.garmentType)})
+                        {m.isDefault ? ' · default' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-navy/45">
+                    <Link to="/measurements" className="text-saffron-600 underline">
+                      Manage or add measurements
+                    </Link>
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-navy/50">Log in as a customer to attach saved sizes.</p>
+              )}
             </div>
             <div>
               <label className="label">Notes</label>

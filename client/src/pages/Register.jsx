@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LocalitySelect from '../components/LocalitySelect';
 
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const asTailor = location.state?.asTailor === true;
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
     phone: '',
-    role: 'customer',
+    role: asTailor ? 'tailor' : 'customer',
     locality: '',
     specialties: '',
   });
@@ -118,6 +120,10 @@ export default function Register() {
           Already have an account?{' '}
           <Link to="/login" className="font-semibold text-saffron-600">
             Log in
+          </Link>
+          {' · '}
+          <Link to="/become-tailor" className="font-semibold text-saffron-600">
+            Already signed up? Become a tailor
           </Link>
         </p>
       </div>

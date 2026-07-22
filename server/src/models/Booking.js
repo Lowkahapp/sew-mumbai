@@ -24,6 +24,13 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
     notes: { type: String, default: '' },
+    /** Snapshot of customer measurements at booking time */
+    measurements: {
+      label: { type: String, default: '' },
+      garmentType: { type: String, default: '' },
+      unit: { type: String, default: 'in' },
+      values: { type: mongoose.Schema.Types.Mixed, default: {} },
+    },
     preferredDate: { type: Date, required: true },
     status: {
       type: String,

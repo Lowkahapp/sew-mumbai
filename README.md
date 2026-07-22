@@ -121,6 +121,7 @@ Or connect the GitHub repo in the Vercel dashboard (root directory = repo root; 
 |--------|------|--------|-------------|
 | POST | `/auth/register` | Public | Register customer or tailor |
 | POST | `/auth/login` | Public | Login, returns JWT |
+| POST | `/auth/become-tailor` | Customer | Upgrade account to tailor + create profile |
 | GET | `/auth/me` | Auth | Current user (+ tailor profile) |
 | GET | `/localities` | Public | Mumbai localities list |
 | GET | `/tailors/search?locality=&specialty=&q=` | Public | Locality aggregation search |
@@ -128,10 +129,15 @@ Or connect the GitHub repo in the Vercel dashboard (root directory = repo root; 
 | GET | `/tailors/:id` | Public | Profile + approved services + reviews |
 | POST | `/tailors/profile` | Tailor | Create profile (pending approval) |
 | GET/PUT | `/tailors/me` | Tailor | Own profile |
-| POST | `/tailors/me/portfolio` | Tailor | Add portfolio item |
+| POST | `/tailors/me/portfolio` | Tailor | Add portfolio item (file upload as base64 `imageData`) |
+| PUT | `/tailors/me/photo` | Tailor | Upload workshop profile photo (`imageData`) |
+| DELETE | `/tailors/me/portfolio/:itemId` | Tailor | Remove portfolio item |
 | GET/POST | `/services` | Tailor | List / create (pending) |
 | PUT/DELETE | `/services/:id` | Tailor | Update (re-pending) / delete |
-| POST | `/bookings` | Customer | Create booking request |
+| POST | `/bookings` | Customer | Create booking request (optional `measurementId`) |
+| GET | `/measurements/templates` | Public | Blouse, shirt, pants measurement guides |
+| GET/POST | `/measurements/me` | Customer | List / save measurement profiles |
+| PUT/DELETE | `/measurements/me/:id` | Customer | Update / delete saved profile |
 | GET | `/bookings/me` | Auth | Role-aware booking list |
 | PUT/PATCH | `/bookings/:id/status` | Auth | Accept/reject/complete/cancel |
 | POST | `/reviews` | Customer | Review completed booking |

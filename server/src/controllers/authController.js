@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import TailorProfile from '../models/TailorProfile.js';
 import { signToken } from '../middleware/auth.js';
 import { LOCALITIES } from '../constants/localities.js';
+import { normalizeImageData } from '../utils/imageData.js';
 
 const formatErrors = (req) => {
   const errors = validationResult(req);
@@ -94,6 +95,77 @@ export const login = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Login failed' });
+  }
+};
+
+export const becomeTailor = async (req, res) => {
+  try {
+    const msgs = formatErrors(req);
+    if (msgs) return res.status(400).json({ message: msgs[0], errors: msgs });
+
+    if (req.user.role !== 'customer') {
+      return res.status(400).json({ message: 'Only customers can become tailors' });
+    }
+
+    const existing = await TailorProfile.findOne({ user: req.user._id });
+    if (existing) {
+      return res.status(400).json({ message: 'Tailor profile already exists' });
+    }
+
+    const {
+      locality,
+      bio = '',
+      specialties = [],
+      experienceYears = 0,
+      startingPrice = 0,
+      businessName = '',
+      profileImageData,
+    } = req.body;
+
+    if (!locality || !LOCALITIES.includes(locality)) {
+      return res.status(400).json({ message: 'Valid Mumbai locality is required' });
+    }
+
+    let profileImageUrl = '';
+    if (profileImageData) {
+      try {
+        profileImageUrl = normalizeImageData(profileImageData);
+      } catch (err) {
+        return res.status(400).json({ message: err.message });
+      }
+    }
+
+    req.user.role = 'tailor';
+    await req.user.save();
+
+    const tailorProfile = await TailorProfile.create({
+      user: req.user._id,
+      businessName,
+      bio,
+      locality,
+      specialties: Array.isArray(specialties) ? specialties : [],
+      experienceYears: Number(experienceYears) || 0,
+      startingPrice: Number(startingPrice) || 0,
+      profileImageUrl,
+      approvalStatus: 'pending',
+    });
+
+    const token = signToken(req.user._id);
+    res.status(201).json({
+      token,
+      message: 'You are now registered as a tailor — awaiting admin approval',
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone,
+        role: req.user.role,
+        tailorProfile,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to become a tailor' });
   }
 };
 

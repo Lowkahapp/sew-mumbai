@@ -7,6 +7,7 @@ export const LOCALITIES = [
   'Worli',
   'Juhu',
   'Malad',
+  'Kandivali',
   'Borivali',
   'Thane',
   'Kurla',

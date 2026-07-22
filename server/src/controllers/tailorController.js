@@ -4,6 +4,7 @@ import TailorProfile from '../models/TailorProfile.js';
 import Service from '../models/Service.js';
 import Review from '../models/Review.js';
 import { LOCALITIES } from '../constants/localities.js';
+import { normalizeImageData, resolveImageSource } from '../utils/imageData.js';
 
 const formatErrors = (req) => {
   const errors = validationResult(req);
@@ -196,7 +197,8 @@ export const updateMyProfile = async (req, res) => {
       return res.status(404).json({ message: 'Tailor profile not found' });
     }
 
-    const { bio, locality, specialties, experienceYears, startingPrice, isActive } = req.body;
+    const { bio, locality, specialties, experienceYears, startingPrice, isActive, profileImageUrl, profileImageData } =
+      req.body;
 
     if (bio !== undefined) profile.bio = bio;
     if (locality !== undefined) {
@@ -209,6 +211,11 @@ export const updateMyProfile = async (req, res) => {
     if (experienceYears !== undefined) profile.experienceYears = experienceYears;
     if (startingPrice !== undefined) profile.startingPrice = startingPrice;
     if (isActive !== undefined) profile.isActive = isActive;
+    if (profileImageData) {
+      profile.profileImageUrl = normalizeImageData(profileImageData);
+    } else if (profileImageUrl !== undefined) {
+      profile.profileImageUrl = profileImageUrl || '';
+    }
 
     await profile.save();
     res.json({ tailor: profile });
@@ -228,10 +235,17 @@ export const addPortfolioItem = async (req, res) => {
       return res.status(404).json({ message: 'Tailor profile not found' });
     }
 
-    const { title, imageUrl, description } = req.body;
+    const { title, imageUrl, imageData, description } = req.body;
+    let resolvedImage = '';
+    try {
+      resolvedImage = resolveImageSource({ imageData, imageUrl });
+    } catch (err) {
+      return res.status(400).json({ message: err.message });
+    }
+
     profile.portfolio.push({
       title,
-      imageUrl: imageUrl || '',
+      imageUrl: resolvedImage,
       description: description || '',
     });
     await profile.save();
@@ -240,6 +254,54 @@ export const addPortfolioItem = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to add portfolio item' });
+  }
+};
+
+export const uploadProfilePhoto = async (req, res) => {
+  try {
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile) {
+      return res.status(404).json({ message: 'Tailor profile not found' });
+    }
+
+    const { imageData } = req.body;
+    if (!imageData) {
+      return res.status(400).json({ message: 'Image data is required' });
+    }
+
+    try {
+      profile.profileImageUrl = normalizeImageData(imageData);
+    } catch (err) {
+      return res.status(400).json({ message: err.message });
+    }
+
+    await profile.save();
+    res.json({ profileImageUrl: profile.profileImageUrl, tailor: profile });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to upload photo' });
+  }
+};
+
+export const deletePortfolioItem = async (req, res) => {
+  try {
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile) {
+      return res.status(404).json({ message: 'Tailor profile not found' });
+    }
+
+    const { itemId } = req.params;
+    const item = profile.portfolio.id(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Portfolio item not found' });
+    }
+
+    item.deleteOne();
+    await profile.save();
+    res.json({ portfolio: profile.portfolio });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete portfolio item' });
   }
 };
 

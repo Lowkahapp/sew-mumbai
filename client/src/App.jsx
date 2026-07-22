@@ -7,10 +7,14 @@ import CustomerSearch from './pages/CustomerSearch';
 import TailorDetail from './pages/TailorDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import BecomeTailor from './pages/BecomeTailor';
 import CustomerDashboard from './pages/CustomerDashboard';
+import CustomerMeasurements from './pages/CustomerMeasurements';
 import TailorDashboard from './pages/TailorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ReviewForm from './pages/ReviewForm';
+import ColorTrends from './pages/ColorTrends';
+import DesignTrends from './pages/DesignTrends';
 
 export default function App() {
   return (
@@ -22,13 +26,24 @@ export default function App() {
             <Route path="tailors" element={<CustomerSearch />} />
             <Route path="search" element={<CustomerSearch />} />
             <Route path="tailors/:id" element={<TailorDetail />} />
+            <Route path="trends/colors" element={<ColorTrends />} />
+            <Route path="trends/design" element={<DesignTrends />} />
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="become-tailor" element={<BecomeTailor />} />
             <Route
               path="dashboard"
               element={
                 <ProtectedRoute roles={['customer']}>
                   <CustomerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="measurements"
+              element={
+                <ProtectedRoute roles={['customer']}>
+                  <CustomerMeasurements />
                 </ProtectedRoute>
               }
             />

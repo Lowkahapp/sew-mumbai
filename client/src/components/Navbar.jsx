@@ -25,6 +25,27 @@ export default function Navbar() {
           <NavLink to="/tailors" className={linkClass}>
             Find Tailors
           </NavLink>
+          <NavLink to="/trends/colors" className={linkClass}>
+            Colors
+          </NavLink>
+          <NavLink to="/trends/design" className={linkClass}>
+            Design
+          </NavLink>
+          {!user && (
+            <NavLink to="/become-tailor" className={linkClass}>
+              Become a tailor
+            </NavLink>
+          )}
+          {user?.role === 'customer' && (
+            <>
+              <NavLink to="/measurements" className={linkClass}>
+                My measurements
+              </NavLink>
+              <NavLink to="/become-tailor" className={linkClass}>
+                List workshop
+              </NavLink>
+            </>
+          )}
           {user && (
             <NavLink to={dashboardPath} className={linkClass}>
               Dashboard

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import LocalitySelect from '../components/LocalitySelect';
 
 export default function Home() {
@@ -44,6 +44,28 @@ export default function Home() {
             Find tailors
           </button>
         </form>
+
+        <p className="mt-6 text-sm text-white/70">
+          Are you a tailor?{' '}
+          <Link to="/become-tailor" className="font-semibold text-saffron-100 underline">
+            List your workshop
+          </Link>
+        </p>
+
+        <div className="mx-auto mt-10 flex max-w-lg flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link
+            to="/trends/colors"
+            className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/15"
+          >
+            Color trends
+          </Link>
+          <Link
+            to="/trends/design"
+            className="rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/15"
+          >
+            Design trends
+          </Link>
+        </div>
       </div>
     </section>
   );

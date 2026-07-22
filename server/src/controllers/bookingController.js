@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import Booking from '../models/Booking.js';
 import Service from '../models/Service.js';
 import TailorProfile from '../models/TailorProfile.js';
+import CustomerMeasurement from '../models/CustomerMeasurement.js';
 import { LOCALITIES } from '../constants/localities.js';
 
 const formatErrors = (req) => {
@@ -15,7 +16,7 @@ export const createBooking = async (req, res) => {
     const msgs = formatErrors(req);
     if (msgs) return res.status(400).json({ message: msgs[0], errors: msgs });
 
-    const { tailorId, serviceId, locality, notes, preferredDate } = req.body;
+    const { tailorId, serviceId, locality, notes, preferredDate, measurementId } = req.body;
 
     if (!LOCALITIES.includes(locality)) {
       return res.status(400).json({ message: 'Invalid locality' });
@@ -35,6 +36,23 @@ export const createBooking = async (req, res) => {
     });
     if (!service) return res.status(404).json({ message: 'Service not available' });
 
+    let measurements = { label: '', garmentType: '', unit: 'in', values: {} };
+    if (measurementId) {
+      const saved = await CustomerMeasurement.findOne({
+        _id: measurementId,
+        user: req.user._id,
+      });
+      if (!saved) {
+        return res.status(404).json({ message: 'Saved measurements not found' });
+      }
+      measurements = {
+        label: saved.label,
+        garmentType: saved.garmentType,
+        unit: saved.unit,
+        values: saved.values,
+      };
+    }
+
     const booking = await Booking.create({
       customer: req.user._id,
       tailor: tailor._id,
@@ -44,6 +62,7 @@ export const createBooking = async (req, res) => {
       preferredDate,
       price: service.price,
       status: 'requested',
+      measurements,
     });
 
     const populated = await Booking.findById(booking._id)

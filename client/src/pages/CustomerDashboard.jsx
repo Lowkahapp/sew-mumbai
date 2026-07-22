@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
+import MeasurementSummary from '../components/MeasurementSummary';
 
 export default function CustomerDashboard() {
   const [bookings, setBookings] = useState([]);
@@ -40,9 +41,14 @@ export default function CustomerDashboard() {
           <h1 className="font-display text-3xl font-bold text-navy">My bookings</h1>
           <p className="text-navy/60">Track requests, cancellations, and reviews</p>
         </div>
-        <Link to="/tailors" className="btn-primary">
-          Book a tailor
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/tailors" className="btn-primary">
+            Book a tailor
+          </Link>
+          <Link to="/measurements" className="btn-secondary">
+            My measurements
+          </Link>
+        </div>
       </div>
 
       {loading && <p className="text-navy/50">Loading…</p>}
@@ -60,6 +66,11 @@ export default function CustomerDashboard() {
                   {b.locality} · {new Date(b.preferredDate).toLocaleDateString()} · ₹{b.price}
                 </p>
                 {b.notes && <p className="mt-2 text-sm text-navy/70">{b.notes}</p>}
+                {b.measurements?.garmentType && (
+                  <div className="mt-2">
+                    <MeasurementSummary measurements={b.measurements} compact />
+                  </div>
+                )}
               </div>
               <StatusBadge status={b.status} />
             </div>

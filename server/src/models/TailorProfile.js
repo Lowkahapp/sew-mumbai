@@ -19,6 +19,8 @@ const tailorProfileSchema = new mongoose.Schema(
       unique: true,
     },
     businessName: { type: String, trim: true, default: '' },
+    /** Workshop / profile photo (URL or base64 data URL) */
+    profileImageUrl: { type: String, default: '' },
     bio: { type: String, default: '' },
     locality: {
       type: String,

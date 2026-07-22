@@ -3,6 +3,8 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LocalitySelect from '../components/LocalitySelect';
 import StatusBadge from '../components/StatusBadge';
+import MeasurementSummary from '../components/MeasurementSummary';
+import ImageUpload from '../components/ImageUpload';
 
 /**
  * Tailor Dashboard View — incoming bookings with Accept / Reject
@@ -33,9 +35,10 @@ export default function TailorDashboard() {
   });
   const [portfolioForm, setPortfolioForm] = useState({
     title: '',
-    imageUrl: '',
+    imageData: '',
     description: '',
   });
+  const [profilePhoto, setProfilePhoto] = useState('');
 
   const load = useCallback(async () => {
     setError('');
@@ -57,6 +60,7 @@ export default function TailorDashboard() {
         experienceYears: t.experienceYears || 0,
         startingPrice: t.startingPrice || 0,
       });
+      setProfilePhoto(t.profileImageUrl || '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -113,6 +117,7 @@ export default function TailorDashboard() {
           .filter(Boolean),
         experienceYears: Number(profileForm.experienceYears),
         startingPrice: Number(profileForm.startingPrice),
+        profileImageData: profilePhoto.startsWith('data:') ? profilePhoto : undefined,
       });
       setMessage('Profile updated');
       await load();
@@ -125,9 +130,23 @@ export default function TailorDashboard() {
   const addPortfolio = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/tailors/me/portfolio', portfolioForm);
-      setPortfolioForm({ title: '', imageUrl: '', description: '' });
+      await api.post('/tailors/me/portfolio', {
+        title: portfolioForm.title,
+        description: portfolioForm.description,
+        imageData: portfolioForm.imageData || undefined,
+      });
+      setPortfolioForm({ title: '', imageData: '', description: '' });
       setMessage('Portfolio item added');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const removePortfolioItem = async (itemId) => {
+    try {
+      await api.delete(`/tailors/me/portfolio/${itemId}`);
+      setMessage('Portfolio item removed');
       await load();
     } catch (err) {
       setError(err.message);
@@ -173,6 +192,7 @@ export default function TailorDashboard() {
         : 'Incoming',
     },
     { id: 'profile', label: 'Profile' },
+    { id: 'portfolio', label: 'Photos' },
     { id: 'services', label: 'Services' },
   ];
 
@@ -306,6 +326,9 @@ export default function TailorDashboard() {
                               {b.notes}
                             </p>
                           )}
+                          {b.measurements?.garmentType && (
+                            <MeasurementSummary measurements={b.measurements} />
+                          )}
                         </div>
 
                         <div className="flex shrink-0 flex-row gap-2 sm:w-36 sm:flex-col">
@@ -381,80 +404,89 @@ export default function TailorDashboard() {
       )}
 
       {tab === 'profile' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <form onSubmit={saveProfile} className="card-surface space-y-4 p-5">
-            <h2 className="font-display text-xl font-semibold">Edit profile</h2>
+        <form onSubmit={saveProfile} className="card-surface mx-auto max-w-xl space-y-4 p-5">
+          <h2 className="font-display text-xl font-semibold">Edit profile</h2>
+          <ImageUpload
+            label="Workshop photo"
+            value={profilePhoto}
+            onChange={setProfilePhoto}
+          />
+          <div>
+            <label className="label">Bio</label>
+            <textarea
+              className="input min-h-[100px]"
+              value={profileForm.bio}
+              onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">Locality</label>
+            <LocalitySelect
+              value={profileForm.locality}
+              onChange={(v) => setProfileForm({ ...profileForm, locality: v })}
+            />
+          </div>
+          <div>
+            <label className="label">Specialties</label>
+            <input
+              className="input"
+              placeholder="Alterations, Blouse, Kurti"
+              value={profileForm.specialties}
+              onChange={(e) => setProfileForm({ ...profileForm, specialties: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Bio</label>
-              <textarea
-                className="input min-h-[100px]"
-                value={profileForm.bio}
-                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Locality</label>
-              <LocalitySelect
-                value={profileForm.locality}
-                onChange={(v) => setProfileForm({ ...profileForm, locality: v })}
-              />
-            </div>
-            <div>
-              <label className="label">Specialties</label>
+              <label className="label">Experience (years)</label>
               <input
+                type="number"
                 className="input"
-                value={profileForm.specialties}
-                onChange={(e) => setProfileForm({ ...profileForm, specialties: e.target.value })}
+                value={profileForm.experienceYears}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, experienceYears: e.target.value })
+                }
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Experience (years)</label>
-                <input
-                  type="number"
-                  className="input"
-                  value={profileForm.experienceYears}
-                  onChange={(e) =>
-                    setProfileForm({ ...profileForm, experienceYears: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="label">Starting price (₹)</label>
-                <input
-                  type="number"
-                  className="input"
-                  value={profileForm.startingPrice}
-                  onChange={(e) =>
-                    setProfileForm({ ...profileForm, startingPrice: e.target.value })
-                  }
-                />
-              </div>
+            <div>
+              <label className="label">Starting price (₹)</label>
+              <input
+                type="number"
+                className="input"
+                value={profileForm.startingPrice}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, startingPrice: e.target.value })
+                }
+              />
             </div>
-            <button type="submit" className="btn-primary">
-              Save profile
-            </button>
-          </form>
+          </div>
+          <button type="submit" className="btn-primary">
+            Save profile
+          </button>
+        </form>
+      )}
 
+      {tab === 'portfolio' && (
+        <div className="grid gap-6 lg:grid-cols-2">
           <form onSubmit={addPortfolio} className="card-surface space-y-4 p-5">
-            <h2 className="font-display text-xl font-semibold">Add portfolio item</h2>
+            <h2 className="font-display text-xl font-semibold">Add work photo</h2>
+            <p className="text-xs text-navy/50">
+              Show customers your stitching, fittings, and finished pieces.
+            </p>
             <div>
               <label className="label">Title</label>
               <input
                 className="input"
+                placeholder="Bridal blouse, Pant alteration…"
                 value={portfolioForm.title}
                 onChange={(e) => setPortfolioForm({ ...portfolioForm, title: e.target.value })}
                 required
               />
             </div>
-            <div>
-              <label className="label">Image URL</label>
-              <input
-                className="input"
-                value={portfolioForm.imageUrl}
-                onChange={(e) => setPortfolioForm({ ...portfolioForm, imageUrl: e.target.value })}
-              />
-            </div>
+            <ImageUpload
+              label="Work photo"
+              value={portfolioForm.imageData}
+              onChange={(v) => setPortfolioForm({ ...portfolioForm, imageData: v })}
+            />
             <div>
               <label className="label">Description</label>
               <textarea
@@ -466,9 +498,45 @@ export default function TailorDashboard() {
               />
             </div>
             <button type="submit" className="btn-secondary">
-              Add item
+              Add to portfolio
             </button>
           </form>
+
+          <div className="space-y-3">
+            <h2 className="font-display text-xl font-semibold text-navy">Your portfolio</h2>
+            {(profile?.portfolio || []).length === 0 && (
+              <p className="text-sm text-navy/50">No photos yet — upload your first piece of work.</p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(profile?.portfolio || []).map((item) => (
+                <article
+                  key={item._id}
+                  className="card-surface overflow-hidden p-0"
+                >
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.title} className="h-36 w-full object-cover" />
+                  ) : (
+                    <div className="flex h-36 items-center justify-center bg-sand-200 text-navy/40">
+                      No image
+                    </div>
+                  )}
+                  <div className="space-y-2 p-3">
+                    <h3 className="font-semibold text-navy">{item.title}</h3>
+                    {item.description && (
+                      <p className="text-sm text-navy/60">{item.description}</p>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-ghost text-sm text-rose-700"
+                      onClick={() => removePortfolioItem(item._id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

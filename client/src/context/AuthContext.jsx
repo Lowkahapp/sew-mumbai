@@ -53,8 +53,14 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const becomeTailor = async (payload) => {
+    const { data } = await api.post('/auth/become-tailor', payload);
+    persist(data.token, data.user);
+    return data.user;
+  };
+
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, refreshMe }),
+    () => ({ user, loading, login, register, becomeTailor, logout, refreshMe }),
     [user, loading, logout, refreshMe]
   );
 

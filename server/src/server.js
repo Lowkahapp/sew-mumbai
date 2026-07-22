@@ -9,6 +9,7 @@ import serviceRoutes from './routes/serviceRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import measurementRoutes from './routes/measurementRoutes.js';
 
 /**
  * Express app factory — registers all API routes.
@@ -60,6 +61,7 @@ const createServer = ({ vercel = false } = {}) => {
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/reviews', reviewRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/measurements', measurementRoutes);
 
   app.use((err, _req, res, _next) => {
     console.error(err);

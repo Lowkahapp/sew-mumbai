@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { register, login, getMe } from '../controllers/authController.js';
+import { register, login, getMe, becomeTailor } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
 const router = Router();
@@ -31,5 +31,19 @@ router.post(
 );
 
 router.get('/me', protect, getMe);
+
+router.post(
+  '/become-tailor',
+  protect,
+  [
+    body('locality').trim().notEmpty().withMessage('Locality is required'),
+    body('bio').optional().isString(),
+    body('businessName').optional().isString(),
+    body('specialties').optional().isArray(),
+    body('experienceYears').optional().isNumeric(),
+    body('startingPrice').optional().isNumeric(),
+  ],
+  becomeTailor
+);
 
 export default router;

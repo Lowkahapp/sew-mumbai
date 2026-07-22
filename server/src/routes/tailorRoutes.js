@@ -7,6 +7,8 @@ import {
   createProfile,
   updateMyProfile,
   addPortfolioItem,
+  uploadProfilePhoto,
+  deletePortfolioItem,
   getMyProfile,
 } from '../controllers/tailorController.js';
 import { protect, authorize } from '../middleware/auth.js';
@@ -20,6 +22,8 @@ const router = Router();
  * GET  /api/tailors/me
  * PUT  /api/tailors/me
  * POST /api/tailors/me/portfolio
+ * PUT  /api/tailors/me/photo
+ * DELETE /api/tailors/me/portfolio/:itemId
  * GET  /api/tailors/:id
  */
 
@@ -62,6 +66,15 @@ router.post(
   authorize('tailor'),
   [body('title').trim().notEmpty().withMessage('Title is required')],
   addPortfolioItem
+);
+
+router.put('/me/photo', protect, authorize('tailor'), uploadProfilePhoto);
+
+router.delete(
+  '/me/portfolio/:itemId',
+  protect,
+  authorize('tailor'),
+  deletePortfolioItem
 );
 
 router.get('/:id', getTailor);
