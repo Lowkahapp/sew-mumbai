@@ -85,8 +85,8 @@ export default function CustomerSearch() {
         </p>
       </header>
 
-      <div className="card-surface overflow-hidden">
-        <div className="p-4">
+      <div className="card-surface">
+        <div className="relative z-10 p-4">
           <label className="label">Neighborhood</label>
           <NeighborhoodSelector value={neighborhood} onChange={setNeighborhood} includeAll />
         </div>
@@ -140,12 +140,14 @@ export default function CustomerSearch() {
       </div>
 
       {showMap && !loading && (
-        <TailorMap
-          tailors={tailors}
-          center={mapCenter}
-          selectedId={highlightId}
-          onPinClick={setHighlightId}
-        />
+        <div className="relative z-0">
+          <TailorMap
+            tailors={tailors}
+            center={mapCenter}
+            selectedId={highlightId}
+            onPinClick={setHighlightId}
+          />
+        </div>
       )}
 
       {error && (
