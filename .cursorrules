@@ -1,0 +1,23 @@
+# SewMumbai — Cursor Rules
+
+## Tech Stack
+- Monorepo: `client/` (Vite + React) + `server/` (Express + Mongoose)
+- Client: React 18, React Router, Axios, Tailwind CSS, Google Fonts (Outfit + Fraunces)
+- Server: Node.js ES modules, Express, Mongoose, JWT (jsonwebtoken), bcryptjs, express-validator, cors, dotenv
+- Database: MongoDB
+
+## Architecture
+- Keep API under `/api` prefix; Vite proxies `/api` → `http://localhost:5000`
+- Auth: JWT in `Authorization: Bearer <token>`; roles: `customer` | `tailor` | `admin`
+- Tailors and services require admin approval before public visibility
+- Bookings: customer requests → tailor accept/reject → complete → customer review (one per booking)
+- Mumbai locality-based search only — use `server/src/constants/localities.js`
+- Mobile-first UI; brand navy `#0B1D36` + saffron `#E07A3D`; fonts Outfit (UI) + Fraunces (display)
+- Avoid purple gradients, Inter/Roboto/Arial defaults, cream+terracotta newspaper layouts
+
+## Constraints
+- Do not invent endpoints outside the documented API surface without updating README
+- Hash passwords with bcrypt; never commit real secrets — use `.env.example`
+- Validate inputs at route boundaries with express-validator
+- Prefer editing existing files over creating new ones unless a clear module boundary requires it
+- Keep files under ~500 lines; split controllers/routes when growing
