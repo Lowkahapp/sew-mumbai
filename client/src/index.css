@@ -44,4 +44,81 @@
   .card-surface {
     @apply rounded-2xl border border-navy-100 bg-white shadow-soft;
   }
+
+  .tailor-map-container {
+    @apply bg-[#0d1117];
+  }
+
+  .tailor-map-marker-wrap,
+  .tailor-map-cluster-wrap {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .tailor-map-marker {
+    @apply relative flex h-10 w-10 items-center justify-center;
+  }
+
+  .tailor-map-marker-dot {
+    @apply relative z-10 h-4 w-4 rounded-full border-2 border-white bg-gray-400 shadow-lg;
+  }
+
+  .tailor-map-marker--active .tailor-map-marker-dot {
+    @apply h-5 w-5 bg-rose-600;
+  }
+
+  .tailor-map-marker-pulse {
+    @apply absolute inset-1 rounded-full bg-rose-600/40 animate-ping;
+  }
+
+  .tailor-map-cluster {
+    @apply flex h-12 w-12 items-center justify-center rounded-full border-2 border-rose-500/40 bg-navy text-sm font-bold text-white shadow-soft;
+    background: linear-gradient(145deg, rgba(225, 29, 72, 0.35), rgba(11, 29, 54, 0.95));
+  }
+
+  .tailor-map-popup-card {
+    @apply min-w-[220px] p-1;
+  }
+
+  .tailor-map-popup-tag {
+    @apply rounded-md bg-rose-600/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-300 ring-1 ring-rose-500/30;
+  }
+
+  .tailor-map-popup-btn {
+    @apply mt-3 flex w-full items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400;
+  }
+}
+
+/* Leaflet popup overrides — dark card aesthetic */
+.tailor-map-popup .leaflet-popup-content-wrapper {
+  @apply rounded-2xl border border-rose-500/25 bg-navy p-0 shadow-soft;
+  background: linear-gradient(160deg, #122a45 0%, #0b1d36 100%);
+}
+
+.tailor-map-popup .leaflet-popup-content {
+  @apply m-3.5;
+  width: auto !important;
+}
+
+.tailor-map-popup .leaflet-popup-tip {
+  background: #0b1d36;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.tailor-map-popup .leaflet-popup-close-button {
+  @apply text-lg leading-none text-white/50 transition hover:text-white;
+  top: 8px !important;
+  right: 10px !important;
+}
+
+.leaflet-control-zoom a {
+  @apply border-white/10 bg-navy-800 text-white/80 hover:bg-navy-700;
+}
+
+.leaflet-control-attribution {
+  @apply bg-navy/80 text-[10px] text-white/35;
+}
+
+.leaflet-control-attribution a {
+  @apply text-white/50;
 }
