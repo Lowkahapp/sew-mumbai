@@ -11,6 +11,7 @@ import {
   distanceKm as haversineKm,
 } from '../constants/neighborhoods.js';
 import { normalizeImageData, resolveImageSource } from '../utils/imageData.js';
+import { normalizeWhatsAppNumber } from '../utils/whatsapp.js';
 
 const formatErrors = (req) => {
   const errors = validationResult(req);
@@ -246,6 +247,7 @@ export const updateMyProfile = async (req, res) => {
       profileImageData,
       homeVisitEnabled,
       homeVisitFee,
+      whatsappNumber,
     } = req.body;
 
     if (bio !== undefined) profile.bio = bio;
@@ -280,6 +282,13 @@ export const updateMyProfile = async (req, res) => {
       profile.profileImageUrl = normalizeImageData(profileImageData);
     } else if (profileImageUrl !== undefined) {
       profile.profileImageUrl = profileImageUrl || '';
+    }
+    if (whatsappNumber !== undefined) {
+      const normalized = normalizeWhatsAppNumber(whatsappNumber);
+      if (normalized === null) {
+        return res.status(400).json({ message: 'Enter a valid 10-digit WhatsApp number' });
+      }
+      profile.whatsappNumber = normalized;
     }
 
     await profile.save();

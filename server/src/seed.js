@@ -81,6 +81,7 @@ const seed = async () => {
     startingPrice: 499,
     homeVisitEnabled: true,
     homeVisitFee: 350,
+    whatsappNumber: '9000000003',
     isVerifiedArtisan: true,
     verificationChecks: {
       shopLicense: true,

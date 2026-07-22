@@ -41,6 +41,8 @@ const tailorProfileSchema = new mongoose.Schema(
     homeVisitEnabled: { type: Boolean, default: false },
     /** Transport / visit fee (₹) when homeVisitEnabled */
     homeVisitFee: { type: Number, default: 0, min: 0, max: 5000 },
+    /** Optional WhatsApp number for customer inquiries (10-digit Indian mobile) */
+    whatsappNumber: { type: String, trim: true, default: '' },
     /** Alias used by live scrape seed — kept in sync with startingPrice */
     pricing: { type: Number, default: 0, min: 0 },
     /** Stable key from scrape source for upserts */

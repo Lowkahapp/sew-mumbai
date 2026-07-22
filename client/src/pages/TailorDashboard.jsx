@@ -8,6 +8,7 @@ import MeasurementSummary from '../components/MeasurementSummary';
 import BookingProgressTracker from '../components/BookingProgressTracker';
 import { nextProgressStage, nextProgressStepLabel } from '../constants/bookingProgress';
 import ImageUpload from '../components/ImageUpload';
+import { formatWhatsAppDisplay } from '../utils/whatsapp';
 
 /**
  * Tailor Dashboard View — incoming bookings with Accept / Reject
@@ -30,6 +31,7 @@ export default function TailorDashboard() {
     startingPrice: 0,
     homeVisitEnabled: false,
     homeVisitFee: 300,
+    whatsappNumber: '',
   });
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -66,6 +68,7 @@ export default function TailorDashboard() {
         startingPrice: t.startingPrice || 0,
         homeVisitEnabled: Boolean(t.homeVisitEnabled),
         homeVisitFee: t.homeVisitFee || 300,
+        whatsappNumber: t.whatsappNumber || '',
       });
       setProfilePhoto(t.profileImageUrl || '');
     } catch (err) {
@@ -145,6 +148,7 @@ export default function TailorDashboard() {
         startingPrice: Number(profileForm.startingPrice),
         homeVisitEnabled: profileForm.homeVisitEnabled,
         homeVisitFee: profileForm.homeVisitEnabled ? Number(profileForm.homeVisitFee) : 0,
+        whatsappNumber: profileForm.whatsappNumber.trim(),
         profileImageData: profilePhoto.startsWith('data:') ? profilePhoto : undefined,
       });
       setMessage('Profile updated');
@@ -554,6 +558,36 @@ export default function TailorDashboard() {
                 />
               </div>
             )}
+          </div>
+
+          <div className="rounded-xl border border-navy/10 bg-sand-100 p-4 space-y-3">
+            <div>
+              <h3 className="font-display text-lg font-semibold text-navy">WhatsApp contact</h3>
+              <p className="text-xs text-navy/55">
+                Let customers message you on WhatsApp for fittings, quotes, or fabric questions.
+              </p>
+            </div>
+            <div>
+              <label className="label" htmlFor="whatsapp-number">
+                WhatsApp number
+              </label>
+              <input
+                id="whatsapp-number"
+                type="tel"
+                className="input"
+                placeholder="9876543210 or +91 98765 43210"
+                value={profileForm.whatsappNumber}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, whatsappNumber: e.target.value })
+                }
+                autoComplete="tel"
+              />
+              {profileForm.whatsappNumber.trim() && (
+                <p className="mt-1 text-xs text-navy/45">
+                  Shown as {formatWhatsAppDisplay(profileForm.whatsappNumber) || 'invalid number — use 10 digits'}
+                </p>
+              )}
+            </div>
           </div>
 
           <button type="submit" className="btn-primary">

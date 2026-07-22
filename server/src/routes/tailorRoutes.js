@@ -58,6 +58,7 @@ router.put(
     body('startingPrice').optional().isNumeric(),
     body('homeVisitEnabled').optional().isBoolean(),
     body('homeVisitFee').optional().isNumeric(),
+    body('whatsappNumber').optional().isString().trim(),
   ],
   updateMyProfile
 );
