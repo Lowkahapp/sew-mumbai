@@ -71,6 +71,18 @@ export default function CustomerSearch() {
     return neighborhood ? `${base} near ${neighborhood}` : `${base} across Mumbai`;
   }, [loading, tailors.length, neighborhood]);
 
+  const mapFitKey = useMemo(
+    () => `${neighborhood}|${specialty}|${tailors.map((t) => t._id).join(',')}`,
+    [neighborhood, specialty, tailors]
+  );
+
+  const handlePinClick = (id) => {
+    setHighlightId(id);
+    requestAnimationFrame(() => {
+      document.getElementById(`tailor-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  };
+
   return (
     <div className="space-y-6">
       <header className="space-y-1">
@@ -139,15 +151,15 @@ export default function CustomerSearch() {
         </button>
       </div>
 
-      {showMap && !loading && (
-        <div className="relative z-0">
-          <TailorMap
-            tailors={tailors}
-            center={mapCenter}
-            selectedId={highlightId}
-            onPinClick={setHighlightId}
-          />
-        </div>
+      {showMap && (
+        <TailorMap
+          tailors={tailors}
+          center={mapCenter}
+          selectedId={highlightId}
+          onPinClick={handlePinClick}
+          loading={loading}
+          fitKey={mapFitKey}
+        />
       )}
 
       {error && (
@@ -181,7 +193,7 @@ export default function CustomerSearch() {
             const rating = tailor.averageRating ?? 0;
             const highlighted = highlightId === tailor._id;
             return (
-              <li key={tailor._id}>
+              <li key={tailor._id} id={`tailor-${tailor._id}`}>
                 <article
                   className={`card-surface flex h-full flex-col overflow-hidden transition hover:-translate-y-0.5 ${
                     highlighted ? 'border-saffron ring-2 ring-saffron/30' : 'hover:border-saffron/30'
