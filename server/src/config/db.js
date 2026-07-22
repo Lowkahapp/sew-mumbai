@@ -10,6 +10,9 @@ const connectDB = async () => {
   if (!uri) {
     throw new Error('MONGODB_URI is not set');
   }
+  if (uri.includes('<db_password>') || uri.includes('<password>')) {
+    throw new Error('MONGODB_URI still contains a password placeholder');
+  }
 
   if (mongoose.connection.readyState === 1) {
     return mongoose.connection;
@@ -19,6 +22,8 @@ const connectDB = async () => {
     connecting = mongoose
       .connect(uri, {
         bufferCommands: false,
+        serverSelectionTimeoutMS: 8000,
+        connectTimeoutMS: 8000,
       })
       .then((conn) => {
         if (process.env.VERCEL !== '1') {

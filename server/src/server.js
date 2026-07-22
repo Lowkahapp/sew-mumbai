@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { LOCALITIES } from './constants/localities.js';
+import dbConnectMiddleware from './middleware/dbConnect.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import tailorRoutes from './routes/tailorRoutes.js';
@@ -13,7 +14,7 @@ import adminRoutes from './routes/adminRoutes.js';
  * Express app factory — registers all API routes.
  * Used by local index.js and Vercel api/index.js.
  */
-const createServer = () => {
+const createServer = ({ vercel = false } = {}) => {
   const app = express();
 
   const allowedOrigins = [
@@ -25,7 +26,6 @@ const createServer = () => {
   app.use(
     cors({
       origin(origin, callback) {
-        // Same-origin / server-to-server / Vite proxy often omit Origin
         if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
         if (/\.vercel\.app$/i.test(origin)) return callback(null, true);
@@ -36,8 +36,17 @@ const createServer = () => {
   );
   app.use(express.json());
 
+  if (vercel || process.env.VERCEL === '1') {
+    app.use(dbConnectMiddleware);
+  }
+
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', app: 'SewMumbai' });
+    res.json({
+      status: 'ok',
+      app: 'SewMumbai',
+      hasMongoUri: Boolean(process.env.MONGODB_URI),
+      hasJwtSecret: Boolean(process.env.JWT_SECRET),
+    });
   });
 
   app.get('/api/localities', (_req, res) => {
