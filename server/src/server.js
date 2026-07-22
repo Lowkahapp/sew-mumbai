@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { LOCALITIES } from './constants/localities.js';
+import { LOCALITIES, listNeighborhoodsByZone, NEIGHBORHOODS } from './constants/neighborhoods.js';
 import dbConnectMiddleware from './middleware/dbConnect.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -52,6 +52,13 @@ const createServer = ({ vercel = false } = {}) => {
 
   app.get('/api/localities', (_req, res) => {
     res.json({ localities: LOCALITIES });
+  });
+
+  app.get('/api/neighborhoods', (_req, res) => {
+    res.json({
+      neighborhoods: NEIGHBORHOODS,
+      byZone: listNeighborhoodsByZone(),
+    });
   });
 
   app.use('/api/auth', authRoutes);

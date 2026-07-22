@@ -2,13 +2,17 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 
 export default function LocalitySelect({ value, onChange, includeAll = false, className = '' }) {
-  const [localities, setLocalities] = useState([]);
+  const [byZone, setByZone] = useState([]);
 
   useEffect(() => {
     api
-      .get('/localities')
-      .then(({ data }) => setLocalities(data.localities || []))
-      .catch(() => setLocalities([]));
+      .get('/neighborhoods')
+      .then(({ data }) => setByZone(data.byZone || []))
+      .catch(() =>
+        api.get('/localities').then(({ data }) => {
+          setByZone([{ zone: 'Mumbai', neighborhoods: (data.localities || []).map((l) => ({ id: l, label: l })) }]);
+        })
+      );
   }, []);
 
   return (
@@ -17,11 +21,15 @@ export default function LocalitySelect({ value, onChange, includeAll = false, cl
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      {includeAll ? <option value="">All localities</option> : <option value="">Select locality</option>}
-      {localities.map((loc) => (
-        <option key={loc} value={loc}>
-          {loc}
-        </option>
+      {includeAll ? <option value="">All neighborhoods</option> : <option value="">Select neighborhood</option>}
+      {byZone.map(({ zone, neighborhoods }) => (
+        <optgroup key={zone} label={zone}>
+          {neighborhoods.map((n) => (
+            <option key={n.id || n.label} value={n.label}>
+              {n.label}
+            </option>
+          ))}
+        </optgroup>
       ))}
     </select>
   );

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { LOCALITIES } from '../constants/localities.js';
+import { LOCALITIES } from '../constants/neighborhoods.js';
 
 const bookingSchema = new mongoose.Schema(
   {
@@ -32,10 +32,22 @@ const bookingSchema = new mongoose.Schema(
       values: { type: mongoose.Schema.Types.Mixed, default: {} },
     },
     preferredDate: { type: Date, required: true },
+    /** Customer requested tailor home visit */
+    homeVisitRequested: { type: Boolean, default: false },
+    /** Visit fee snapshot at booking time (₹) */
+    homeVisitFee: { type: Number, default: 0, min: 0 },
+    /** Base service price before visit fee */
+    servicePrice: { type: Number, min: 0 },
     status: {
       type: String,
       enum: ['requested', 'accepted', 'rejected', 'completed', 'cancelled'],
       default: 'requested',
+    },
+    /** Production pipeline after acceptance */
+    progressStage: {
+      type: String,
+      enum: ['none', 'accepted', 'fabric_received', 'stitching', 'ready'],
+      default: 'none',
     },
     price: { type: Number, required: true, min: 0 },
   },

@@ -3,7 +3,13 @@ import mongoose from 'mongoose';
 import TailorProfile from '../models/TailorProfile.js';
 import Service from '../models/Service.js';
 import Review from '../models/Review.js';
-import { LOCALITIES } from '../constants/localities.js';
+import {
+  LOCALITIES,
+  localityMatchValues,
+  getNeighborhood,
+  resolveCoordinates,
+  distanceKm as haversineKm,
+} from '../constants/neighborhoods.js';
 import { normalizeImageData, resolveImageSource } from '../utils/imageData.js';
 
 const formatErrors = (req) => {
@@ -20,17 +26,18 @@ const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
  */
 export const searchTailors = async (req, res) => {
   try {
-    const { locality, specialty, q } = req.query;
+    const { locality, specialty, q, sort } = req.query;
 
     const match = {
       approvalStatus: 'approved',
       isActive: true,
     };
 
+    let center = null;
     if (locality) {
-      match.locality = {
-        $regex: new RegExp(`^${escapeRegex(String(locality).trim())}$`, 'i'),
-      };
+      const values = localityMatchValues(locality);
+      center = getNeighborhood(locality);
+      match.locality = { $in: values };
     }
     if (specialty) {
       match.specialties = {
@@ -85,14 +92,42 @@ export const searchTailors = async (req, res) => {
       },
     ]);
 
+    let tailors = result?.tailors || [];
+
+    tailors = tailors.map((t) => {
+      const coords = t.coordinates?.lat
+        ? t.coordinates
+        : resolveCoordinates(t.locality) || null;
+      let distKm = null;
+      if (center && coords?.lat) {
+        distKm = Math.round(haversineKm(center.lat, center.lng, coords.lat, coords.lng) * 10) / 10;
+      }
+      return {
+        ...t,
+        coordinates: coords,
+        distanceKm: distKm,
+        neighborhood: getNeighborhood(t.locality)?.label || t.locality,
+      };
+    });
+
+    if (center && (sort === 'distance' || locality)) {
+      tailors.sort((a, b) => {
+        const da = a.distanceKm ?? 999;
+        const db = b.distanceKm ?? 999;
+        if (da !== db) return da - db;
+        return (b.averageRating || 0) - (a.averageRating || 0);
+      });
+    }
+
     res.json({
-      tailors: result?.tailors || [],
+      tailors,
       byLocality: result?.byLocality || [],
       filters: {
         locality: locality || null,
         specialty: specialty || null,
         q: q || null,
       },
+      center: center ? { label: center.label, lat: center.lat, lng: center.lng } : null,
     });
   } catch (err) {
     console.error(err);
@@ -160,10 +195,13 @@ export const createProfile = async (req, res) => {
       return res.status(400).json({ message: 'Valid Mumbai locality is required' });
     }
 
+    const coords = resolveCoordinates(locality);
+
     const tailor = await TailorProfile.create({
       user: req.user._id,
       bio,
       locality,
+      coordinates: coords || undefined,
       specialties: Array.isArray(specialties) ? specialties : [],
       experienceYears: Number(experienceYears) || 0,
       startingPrice: Number(startingPrice) || 0,
@@ -197,8 +235,18 @@ export const updateMyProfile = async (req, res) => {
       return res.status(404).json({ message: 'Tailor profile not found' });
     }
 
-    const { bio, locality, specialties, experienceYears, startingPrice, isActive, profileImageUrl, profileImageData } =
-      req.body;
+    const {
+      bio,
+      locality,
+      specialties,
+      experienceYears,
+      startingPrice,
+      isActive,
+      profileImageUrl,
+      profileImageData,
+      homeVisitEnabled,
+      homeVisitFee,
+    } = req.body;
 
     if (bio !== undefined) profile.bio = bio;
     if (locality !== undefined) {
@@ -206,11 +254,28 @@ export const updateMyProfile = async (req, res) => {
         return res.status(400).json({ message: 'Invalid locality' });
       }
       profile.locality = locality;
+      const coords = resolveCoordinates(locality);
+      if (coords) profile.coordinates = coords;
     }
     if (specialties !== undefined) profile.specialties = specialties;
     if (experienceYears !== undefined) profile.experienceYears = experienceYears;
     if (startingPrice !== undefined) profile.startingPrice = startingPrice;
     if (isActive !== undefined) profile.isActive = isActive;
+    if (homeVisitEnabled !== undefined) profile.homeVisitEnabled = Boolean(homeVisitEnabled);
+    if (homeVisitFee !== undefined || homeVisitEnabled !== undefined) {
+      const enabled = homeVisitEnabled !== undefined ? Boolean(homeVisitEnabled) : profile.homeVisitEnabled;
+      const fee = homeVisitFee !== undefined ? Number(homeVisitFee) : profile.homeVisitFee;
+      if (enabled) {
+        if (!Number.isFinite(fee) || fee < 200 || fee > 500) {
+          return res.status(400).json({ message: 'Home visit fee must be between ₹200 and ₹500' });
+        }
+        profile.homeVisitFee = fee;
+        profile.homeVisitEnabled = true;
+      } else {
+        profile.homeVisitEnabled = false;
+        profile.homeVisitFee = 0;
+      }
+    }
     if (profileImageData) {
       profile.profileImageUrl = normalizeImageData(profileImageData);
     } else if (profileImageUrl !== undefined) {

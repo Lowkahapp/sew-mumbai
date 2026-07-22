@@ -56,6 +56,8 @@ router.put(
     body('specialties').optional().isArray(),
     body('experienceYears').optional().isNumeric(),
     body('startingPrice').optional().isNumeric(),
+    body('homeVisitEnabled').optional().isBoolean(),
+    body('homeVisitFee').optional().isNumeric(),
   ],
   updateMyProfile
 );

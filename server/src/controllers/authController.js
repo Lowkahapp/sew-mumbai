@@ -2,7 +2,7 @@ import { validationResult } from 'express-validator';
 import User from '../models/User.js';
 import TailorProfile from '../models/TailorProfile.js';
 import { signToken } from '../middleware/auth.js';
-import { LOCALITIES } from '../constants/localities.js';
+import { LOCALITIES, resolveCoordinates } from '../constants/neighborhoods.js';
 import { normalizeImageData } from '../utils/imageData.js';
 
 const formatErrors = (req) => {
@@ -43,9 +43,11 @@ export const register = async (req, res) => {
 
     let tailorProfile = null;
     if (userRole === 'tailor') {
+      const coords = resolveCoordinates(locality);
       tailorProfile = await TailorProfile.create({
         user: user._id,
         locality,
+        coordinates: coords || undefined,
         specialties: Array.isArray(specialties) ? specialties : [],
         bio: '',
         approvalStatus: 'pending',
@@ -138,11 +140,14 @@ export const becomeTailor = async (req, res) => {
     req.user.role = 'tailor';
     await req.user.save();
 
+    const coords = resolveCoordinates(locality);
+
     const tailorProfile = await TailorProfile.create({
       user: req.user._id,
       businessName,
       bio,
       locality,
+      coordinates: coords || undefined,
       specialties: Array.isArray(specialties) ? specialties : [],
       experienceYears: Number(experienceYears) || 0,
       startingPrice: Number(startingPrice) || 0,

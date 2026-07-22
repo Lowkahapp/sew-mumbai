@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import MeasurementSummary from '../components/MeasurementSummary';
+import BookingProgressTracker from '../components/BookingProgressTracker';
 
 export default function CustomerDashboard() {
   const [bookings, setBookings] = useState([]);
@@ -46,7 +47,7 @@ export default function CustomerDashboard() {
             Book a tailor
           </Link>
           <Link to="/measurements" className="btn-secondary">
-            My measurements
+            Measurement profiles
           </Link>
         </div>
       </div>
@@ -64,6 +65,9 @@ export default function CustomerDashboard() {
                 </h2>
                 <p className="mt-1 text-sm text-navy/60">
                   {b.locality} · {new Date(b.preferredDate).toLocaleDateString()} · ₹{b.price}
+                  {b.homeVisitRequested && (
+                    <span className="ml-1 text-saffron-600">· Home visit</span>
+                  )}
                 </p>
                 {b.notes && <p className="mt-2 text-sm text-navy/70">{b.notes}</p>}
                 {b.measurements?.garmentType && (
@@ -74,6 +78,7 @@ export default function CustomerDashboard() {
               </div>
               <StatusBadge status={b.status} />
             </div>
+            <BookingProgressTracker booking={b} />
             <div className="mt-4 flex flex-wrap gap-2">
               {['requested', 'accepted'].includes(b.status) && (
                 <button type="button" className="btn-ghost" onClick={() => cancel(b._id)}>

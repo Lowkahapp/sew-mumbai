@@ -3,7 +3,10 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LocalitySelect from '../components/LocalitySelect';
 import StatusBadge from '../components/StatusBadge';
+import VerifiedArtisanBadge from '../components/VerifiedArtisanBadge';
 import MeasurementSummary from '../components/MeasurementSummary';
+import BookingProgressTracker from '../components/BookingProgressTracker';
+import { nextProgressStage, nextProgressStepLabel } from '../constants/bookingProgress';
 import ImageUpload from '../components/ImageUpload';
 
 /**
@@ -25,6 +28,8 @@ export default function TailorDashboard() {
     specialties: '',
     experienceYears: 0,
     startingPrice: 0,
+    homeVisitEnabled: false,
+    homeVisitFee: 300,
   });
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -59,6 +64,8 @@ export default function TailorDashboard() {
         specialties: (t.specialties || []).join(', '),
         experienceYears: t.experienceYears || 0,
         startingPrice: t.startingPrice || 0,
+        homeVisitEnabled: Boolean(t.homeVisitEnabled),
+        homeVisitFee: t.homeVisitFee || 300,
       });
       setProfilePhoto(t.profileImageUrl || '');
     } catch (err) {
@@ -104,6 +111,25 @@ export default function TailorDashboard() {
     }
   };
 
+  const advanceProgress = async (booking) => {
+    const next = nextProgressStage(booking.progressStage || 'accepted');
+    if (!next) return;
+    setError('');
+    setMessage('');
+    setUpdatingId(booking._id);
+    try {
+      const { data } = await api.patch(`/bookings/${booking._id}/progress`, {
+        progressStage: next,
+      });
+      setBookings((prev) => prev.map((b) => (b._id === booking._id ? data.booking : b)));
+      setMessage(`Progress updated — ${nextProgressStepLabel(booking.progressStage || 'accepted')}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const saveProfile = async (e) => {
     e.preventDefault();
     setMessage('');
@@ -117,6 +143,8 @@ export default function TailorDashboard() {
           .filter(Boolean),
         experienceYears: Number(profileForm.experienceYears),
         startingPrice: Number(profileForm.startingPrice),
+        homeVisitEnabled: profileForm.homeVisitEnabled,
+        homeVisitFee: profileForm.homeVisitEnabled ? Number(profileForm.homeVisitFee) : 0,
         profileImageData: profilePhoto.startsWith('data:') ? profilePhoto : undefined,
       });
       setMessage('Profile updated');
@@ -206,7 +234,17 @@ export default function TailorDashboard() {
         <p className="text-navy/60">
           Profile status:{' '}
           {profile ? <StatusBadge status={profile.approvalStatus} /> : '…'}
+          {profile?.isVerifiedArtisan && (
+            <span className="ml-2 inline-flex align-middle">
+              <VerifiedArtisanBadge size="sm" />
+            </span>
+          )}
         </p>
+        {profile?.approvalStatus === 'approved' && !profile?.isVerifiedArtisan && (
+          <p className="text-xs text-navy/50">
+            Awaiting Verified Artisan review — admin may confirm your shop license, ID, or portfolio.
+          </p>
+        )}
       </header>
 
       <div className="flex flex-wrap gap-2">
@@ -320,6 +358,14 @@ export default function TailorDashboard() {
                                 <dd className="inline">{b.customer.phone}</dd>
                               </div>
                             )}
+                            {b.homeVisitRequested && (
+                              <div className="sm:col-span-2">
+                                <dt className="inline text-navy/40">Visit: </dt>
+                                <dd className="inline font-medium text-saffron-700">
+                                  Home visit requested (+₹{b.homeVisitFee || 0})
+                                </dd>
+                              </div>
+                            )}
                           </dl>
                           {b.notes && (
                             <p className="rounded-xl bg-sand-100 px-3 py-2 text-sm text-navy/80">
@@ -384,15 +430,30 @@ export default function TailorDashboard() {
                         </div>
                         <StatusBadge status={b.status} />
                       </div>
+                      <BookingProgressTracker booking={b} compact />
                       {b.status === 'accepted' && (
-                        <button
-                          type="button"
-                          className="btn-secondary mt-3"
-                          disabled={updatingId === b._id}
-                          onClick={() => updateBookingStatus(b._id, 'completed')}
-                        >
-                          Mark completed
-                        </button>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {nextProgressStage(b.progressStage || 'accepted') && (
+                            <button
+                              type="button"
+                              className="btn-secondary text-sm"
+                              disabled={updatingId === b._id}
+                              onClick={() => advanceProgress(b)}
+                            >
+                              {updatingId === b._id
+                                ? '…'
+                                : `Mark: ${nextProgressStepLabel(b.progressStage || 'accepted')}`}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-primary text-sm"
+                            disabled={updatingId === b._id}
+                            onClick={() => updateBookingStatus(b._id, 'completed')}
+                          >
+                            Mark completed
+                          </button>
+                        </div>
                       )}
                     </article>
                   </li>
@@ -459,6 +520,42 @@ export default function TailorDashboard() {
               />
             </div>
           </div>
+
+          <div className="rounded-xl border border-navy/10 bg-sand-100 p-4 space-y-3">
+            <div>
+              <h3 className="font-display text-lg font-semibold text-navy">Home visit pricing</h3>
+              <p className="text-xs text-navy/55">
+                Offer fittings or pickup at the customer&apos;s home. Set a transport fee between ₹200–₹500.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-sm font-medium text-navy">
+              <input
+                type="checkbox"
+                checked={profileForm.homeVisitEnabled}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, homeVisitEnabled: e.target.checked })
+                }
+              />
+              Accept home visit requests
+            </label>
+            {profileForm.homeVisitEnabled && (
+              <div>
+                <label className="label">Visit / transport fee (₹200–₹500)</label>
+                <input
+                  type="number"
+                  min="200"
+                  max="500"
+                  step="50"
+                  className="input"
+                  value={profileForm.homeVisitFee}
+                  onChange={(e) =>
+                    setProfileForm({ ...profileForm, homeVisitFee: e.target.value })
+                  }
+                />
+              </div>
+            )}
+          </div>
+
           <button type="submit" className="btn-primary">
             Save profile
           </button>

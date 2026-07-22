@@ -4,7 +4,9 @@ import {
   createBooking,
   listMyBookings,
   updateBookingStatus,
+  updateBookingProgress,
 } from '../controllers/bookingController.js';
+import { PROGRESS_STAGE_ORDER } from '../constants/bookingProgress.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = Router();
@@ -15,7 +17,32 @@ const router = Router();
  * GET    /api/bookings/me           — role-aware list
  * PUT    /api/bookings/:id/status   — tailor accept/reject/complete; customer cancel
  * PATCH  /api/bookings/:id/status   — same (compat)
+ * PATCH  /api/bookings/:id/progress — tailor advance production stage
  */
+
+router.patch(
+  '/:id/progress',
+  protect,
+  authorize('tailor'),
+  [
+    body('progressStage')
+      .isIn(PROGRESS_STAGE_ORDER)
+      .withMessage('Invalid progress stage'),
+  ],
+  updateBookingProgress
+);
+
+router.put(
+  '/:id/progress',
+  protect,
+  authorize('tailor'),
+  [
+    body('progressStage')
+      .isIn(PROGRESS_STAGE_ORDER)
+      .withMessage('Invalid progress stage'),
+  ],
+  updateBookingProgress
+);
 
 router.post(
   '/',
@@ -26,6 +53,7 @@ router.post(
     body('serviceId').notEmpty().withMessage('Service is required'),
     body('locality').notEmpty().withMessage('Locality is required'),
     body('preferredDate').isISO8601().withMessage('Valid preferred date is required'),
+    body('homeVisitRequested').optional().isBoolean(),
   ],
   createBooking
 );

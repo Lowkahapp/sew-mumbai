@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
-import MeasurementGuide, { formatMeasurementSummary, garmentLabel } from '../components/MeasurementGuide';
-import MeasurementForm from '../components/MeasurementForm';
-
-const EMPTY_FORM = { label: '', values: {}, unit: 'in', isDefault: false };
+import InteractiveMeasurementWizard from '../components/InteractiveMeasurementWizard';
+import { formatMeasurementSummary, garmentLabel } from '../components/MeasurementGuide';
 
 export default function CustomerMeasurements() {
   const [templates, setTemplates] = useState([]);
   const [saved, setSaved] = useState([]);
   const [activeType, setActiveType] = useState('blouse');
+  const [view, setView] = useState('profiles');
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [editForm, setEditForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -42,54 +42,47 @@ export default function CustomerMeasurements() {
     load();
   }, [load]);
 
-  const resetForm = (type = activeType) => {
+  const filteredSaved = saved.filter((s) => s.garmentType === activeType);
+
+  const openWizard = (item = null) => {
+    setEditingId(item?._id || null);
+    setEditForm(
+      item
+        ? {
+            label: item.label,
+            values: { ...item.values },
+            unit: item.unit || 'in',
+            isDefault: item.isDefault,
+          }
+        : null
+    );
+    setView('wizard');
+  };
+
+  const closeWizard = () => {
+    setView('profiles');
     setEditingId(null);
-    setForm({
-      label: `${garmentLabel(type)} size`,
-      values: {},
-      unit: 'in',
-      isDefault: false,
-    });
+    setEditForm(null);
   };
 
   const switchType = (type) => {
     setActiveType(type);
-    resetForm(type);
+    if (view === 'wizard' && !editingId) closeWizard();
   };
 
-  const startEdit = (item) => {
-    setEditingId(item._id);
-    setActiveType(item.garmentType);
-    setForm({
-      label: item.label,
-      values: { ...item.values },
-      unit: item.unit || 'in',
-      isDefault: item.isDefault,
-    });
-  };
-
-  const save = async (e) => {
-    e.preventDefault();
+  const saveProfile = async (payload) => {
     setError('');
     setMessage('');
     setSaving(true);
     try {
-      const payload = {
-        label: form.label.trim() || `${garmentLabel(activeType)} size`,
-        garmentType: activeType,
-        unit: form.unit,
-        values: form.values,
-        isDefault: form.isDefault,
-      };
-
       if (editingId) {
         await api.put(`/measurements/me/${editingId}`, payload);
-        setMessage('Measurements updated');
+        setMessage('Measurement profile updated');
       } else {
         await api.post('/measurements/me', payload);
-        setMessage('Measurements saved');
+        setMessage('Measurement profile saved securely to your account');
       }
-      resetForm(activeType);
+      closeWizard();
       await load();
     } catch (err) {
       setError(err.message);
@@ -102,25 +95,25 @@ export default function CustomerMeasurements() {
     setError('');
     try {
       await api.delete(`/measurements/me/${id}`);
-      if (editingId === id) resetForm(activeType);
-      setMessage('Measurements removed');
+      setMessage('Profile removed');
       await load();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const filteredSaved = saved.filter((s) => s.garmentType === activeType);
-
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
+      <header className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-saffron">
-          Fit profiles
+          Digital fit profile
         </p>
-        <h1 className="font-display text-3xl font-bold text-navy">My measurements</h1>
-        <p className="text-navy/60">
-          Save blouse, shirt, and pants sizes once — reuse them when you book a tailor.
+        <h1 className="font-display text-3xl font-bold text-navy sm:text-4xl">
+          Interactive measurement guide
+        </h1>
+        <p className="max-w-2xl text-navy/60">
+          Follow the step-by-step diagram to measure blouse, shirt, or pants. Save profiles to your
+          account and reuse them with any tailor when you book.
         </p>
       </header>
 
@@ -150,70 +143,44 @@ export default function CustomerMeasurements() {
 
       {loading ? (
         <p className="text-navy/50">Loading…</p>
+      ) : view === 'wizard' && template ? (
+        <InteractiveMeasurementWizard
+          template={template}
+          initialLabel={editForm?.label}
+          initialValues={editForm?.values || {}}
+          initialUnit={editForm?.unit || 'in'}
+          initialIsDefault={editForm?.isDefault || false}
+          editingId={editingId}
+          onSave={saveProfile}
+          onCancel={closeWizard}
+          saving={saving}
+        />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="card-surface space-y-5 p-5">
-            <MeasurementGuide template={template} />
-
-            <form onSubmit={save} className="space-y-4 border-t border-navy/8 pt-5">
-              <h2 className="font-display text-xl font-semibold text-navy">
-                {editingId ? 'Edit saved size' : `Save ${template?.label} measurements`}
-              </h2>
-
-              <div>
-                <label className="label">Profile name</label>
-                <input
-                  className="input"
-                  placeholder="e.g. Wedding blouse, Office shirt"
-                  value={form.label}
-                  onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
-                />
-              </div>
-
-              <MeasurementForm
-                template={template}
-                values={form.values}
-                unit={form.unit}
-                onChange={(values) => setForm((f) => ({ ...f, values }))}
-                onUnitChange={(unit) => setForm((f) => ({ ...f, unit }))}
-              />
-
-              <label className="flex items-center gap-2 text-sm text-navy/70">
-                <input
-                  type="checkbox"
-                  checked={form.isDefault}
-                  onChange={(e) => setForm((f) => ({ ...f, isDefault: e.target.checked }))}
-                />
-                Use as default for {template?.label.toLowerCase()} bookings
-              </label>
-
-              <div className="flex flex-wrap gap-2">
-                <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving ? 'Saving…' : editingId ? 'Update' : 'Save measurements'}
-                </button>
-                {editingId && (
-                  <button type="button" className="btn-ghost" onClick={() => resetForm(activeType)}>
-                    Cancel edit
-                  </button>
-                )}
-              </div>
-            </form>
-          </section>
-
-          <section className="space-y-4">
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl font-semibold text-navy">
-              Saved {template?.label} profiles
+              Your {template?.label} profiles
             </h2>
+            <button type="button" className="btn-primary" onClick={() => openWizard()}>
+              + New guided profile
+            </button>
+          </div>
 
-            {filteredSaved.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-navy/15 px-4 py-10 text-center text-sm text-navy/50">
-                No saved {template?.label.toLowerCase()} measurements yet.
+          {filteredSaved.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-navy/15 bg-sand-100/50 px-6 py-14 text-center">
+              <p className="font-display text-lg text-navy/70">No {template?.label.toLowerCase()} profile yet</p>
+              <p className="mx-auto mt-2 max-w-md text-sm text-navy/50">
+                Start the interactive guide — we&apos;ll walk you through each measurement with a
+                diagram and save it to your account.
               </p>
-            )}
-
-            <ul className="space-y-3">
+              <button type="button" className="btn-primary mt-6" onClick={() => openWizard()}>
+                Start interactive guide
+              </button>
+            </div>
+          ) : (
+            <ul className="grid gap-4 sm:grid-cols-2">
               {filteredSaved.map((item) => (
-                <li key={item._id} className="card-surface p-4">
+                <li key={item._id} className="card-surface p-5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <h3 className="font-semibold text-navy">
@@ -224,25 +191,16 @@ export default function CustomerMeasurements() {
                           </span>
                         )}
                       </h3>
+                      <p className="mt-1 text-sm text-navy/55">
+                        {garmentLabel(item.garmentType)} · {item.unit}
+                      </p>
                       <p className="mt-1 text-sm text-navy/60">
                         {formatMeasurementSummary(item, template)}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <button type="button" className="btn-ghost text-sm" onClick={() => startEdit(item)}>
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-ghost text-sm text-rose-700"
-                        onClick={() => remove(item._id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
                   </div>
 
-                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
+                  <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
                     {template?.fields
                       .filter((f) => item.values[f.key] != null)
                       .map((f) => (
@@ -254,10 +212,35 @@ export default function CustomerMeasurements() {
                         </div>
                       ))}
                   </dl>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button type="button" className="btn-secondary text-sm" onClick={() => openWizard(item)}>
+                      Edit in guide
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost text-sm text-rose-700"
+                      onClick={() => remove(item._id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
-          </section>
+          )}
+
+          <div className="rounded-xl border border-navy/8 bg-navy px-5 py-4 text-white sm:flex sm:items-center sm:justify-between sm:gap-4">
+            <div>
+              <p className="font-medium">Reuse with any tailor</p>
+              <p className="mt-1 text-sm text-white/70">
+                Attach a saved profile when booking — dimensions are shared only with that tailor.
+              </p>
+            </div>
+            <Link to="/tailors" className="btn-secondary mt-3 shrink-0 bg-white/10 text-white hover:bg-white/20 sm:mt-0">
+              Find tailors
+            </Link>
+          </div>
         </div>
       )}
     </div>

@@ -39,7 +39,7 @@ export default function Navbar() {
           {user?.role === 'customer' && (
             <>
               <NavLink to="/measurements" className={linkClass}>
-                My measurements
+                Measurements
               </NavLink>
               <NavLink to="/become-tailor" className={linkClass}>
                 List workshop

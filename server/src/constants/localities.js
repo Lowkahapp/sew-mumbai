@@ -1,35 +1,14 @@
-export const LOCALITIES = [
-  'Andheri',
-  'Bandra',
-  'Colaba',
-  'Dadar',
-  'Powai',
-  'Worli',
-  'Juhu',
-  'Malad',
-  'Kandivali',
-  'Borivali',
-  'Thane',
-  'Kurla',
-  'Chembur',
-  'Goregaon',
-  'Santacruz',
-  'Vile Parle',
-  'Lower Parel',
-  'Fort',
-  'Marine Lines',
-  'Khar',
-  'Bhandup',
-  'Ghatkopar',
-  'Mulund',
-  'Versova',
-  'Lokhandwala',
-  'Pedder Road',
-  'Byculla',
-  'Parel',
-  'Sion',
-  'Matunga',
-  'Mahim',
-];
+/** @deprecated — import from neighborhoods.js; kept for backward-compatible imports. */
+export {
+  LOCALITIES,
+  NEIGHBORHOODS,
+  getNeighborhood,
+  localityMatchValues,
+  resolveCoordinates,
+  listNeighborhoodsByZone,
+  projectToMap,
+  distanceKm,
+  MUMBAI_BOUNDS,
+} from './neighborhoods.js';
 
-export default LOCALITIES;
+export { LOCALITIES as default } from './neighborhoods.js';

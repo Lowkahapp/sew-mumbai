@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import StarRating from '../components/StarRating';
+import VerifiedArtisanBadge from '../components/VerifiedArtisanBadge';
+import NeighborhoodSelector from '../components/NeighborhoodSelector';
+import TailorMap from '../components/TailorMap';
+import { formatDistance } from '../utils/geo';
 
 const SPECIALTIES = [
   { label: 'Lehengas', query: 'Lehenga' },
@@ -9,55 +13,23 @@ const SPECIALTIES = [
   { label: 'Alterations', query: 'Alterations' },
 ];
 
-const FALLBACK_LOCALITIES = [
-  'Andheri',
-  'Bandra',
-  'Colaba',
-  'Dadar',
-  'Powai',
-  'Worli',
-  'Juhu',
-  'Malad',
-  'Borivali',
-  'Thane',
-  'Kurla',
-  'Chembur',
-];
-
 function businessName(tailor) {
   return tailor.businessName || tailor.shopName || tailor.user?.name || 'Tailor';
 }
 
 /**
- * Customer Search View — Mumbai locality search bar + tailor card grid
+ * Customer Search — neighborhood selector + map pins + tailor grid
  */
 export default function CustomerSearch() {
   const [params, setParams] = useSearchParams();
-  const [localityQuery, setLocalityQuery] = useState(params.get('locality') || '');
+  const [neighborhood, setNeighborhood] = useState(params.get('locality') || '');
   const [specialty, setSpecialty] = useState(params.get('specialty') || '');
-  const [localities, setLocalities] = useState(FALLBACK_LOCALITIES);
   const [tailors, setTailors] = useState([]);
-  const [byLocality, setByLocality] = useState([]);
+  const [mapCenter, setMapCenter] = useState(null);
+  const [highlightId, setHighlightId] = useState(null);
+  const [showMap, setShowMap] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    api
-      .get('/localities')
-      .then(({ data }) => {
-        if (data.localities?.length) setLocalities(data.localities);
-      })
-      .catch(() => {});
-  }, []);
-
-  const matchedLocality = useMemo(() => {
-    const q = localityQuery.trim().toLowerCase();
-    if (!q) return '';
-    const exact = localities.find((loc) => loc.toLowerCase() === q);
-    if (exact) return exact;
-    const starts = localities.find((loc) => loc.toLowerCase().startsWith(q));
-    return starts || localityQuery.trim();
-  }, [localityQuery, localities]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,15 +39,16 @@ export default function CustomerSearch() {
       setError('');
       try {
         const query = new URLSearchParams();
-        if (matchedLocality) query.set('locality', matchedLocality);
+        if (neighborhood) query.set('locality', neighborhood);
         if (specialty) query.set('specialty', specialty);
+        if (neighborhood) query.set('sort', 'distance');
         setParams(query, { replace: true });
 
         const { data } = await api.get(`/tailors/search?${query.toString()}`, {
           signal: controller.signal,
         });
         setTailors(data.tailors || []);
-        setByLocality(data.byLocality || []);
+        setMapCenter(data.center || null);
       } catch (err) {
         if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
         setError(err.message || 'Could not load tailors');
@@ -89,12 +62,14 @@ export default function CustomerSearch() {
       clearTimeout(debounce);
       controller.abort();
     };
-  }, [matchedLocality, specialty, setParams]);
+  }, [neighborhood, specialty, setParams]);
 
-  const quickLocalities = useMemo(() => {
-    const popular = ['Bandra', 'Andheri', 'Powai', 'Dadar', 'Juhu', 'Worli'];
-    return popular.filter((loc) => localities.includes(loc));
-  }, [localities]);
+  const resultLabel = useMemo(() => {
+    if (loading) return 'Searching…';
+    const n = tailors.length;
+    const base = `${n} tailor${n === 1 ? '' : 's'}`;
+    return neighborhood ? `${base} near ${neighborhood}` : `${base} across Mumbai`;
+  }, [loading, tailors.length, neighborhood]);
 
   return (
     <div className="space-y-6">
@@ -103,90 +78,17 @@ export default function CustomerSearch() {
           Customer search
         </p>
         <h1 className="font-display text-3xl font-bold text-navy sm:text-4xl">
-          Find a tailor in Mumbai
+          Find a tailor near you
         </h1>
         <p className="max-w-xl text-navy/60">
-          Search by locality, filter by specialty, then book an approved maker near you.
+          Filter by neighborhood, see map pins, and book the closest tailor for fittings or drop-offs.
         </p>
       </header>
 
-      {/* Locality search bar */}
       <div className="card-surface overflow-hidden">
-        <form
-          className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <div className="min-w-0 flex-1">
-            <label htmlFor="customer-locality-search" className="label">
-              Mumbai locality
-            </label>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-navy/35">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-4 w-4"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </span>
-              <input
-                id="customer-locality-search"
-                type="search"
-                list="customer-mumbai-localities"
-                className="input pl-10"
-                placeholder="e.g. Bandra, Andheri, Powai"
-                value={localityQuery}
-                onChange={(e) => setLocalityQuery(e.target.value)}
-                autoComplete="off"
-              />
-              <datalist id="customer-mumbai-localities">
-                {localities.map((loc) => (
-                  <option key={loc} value={loc} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-          {localityQuery && (
-            <button
-              type="button"
-              className="btn-ghost shrink-0"
-              onClick={() => setLocalityQuery('')}
-            >
-              Clear
-            </button>
-          )}
-        </form>
-
-        <div className="border-t border-navy/5 px-4 py-3">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-navy/40">
-            Popular areas
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {quickLocalities.map((loc) => {
-              const active = matchedLocality.toLowerCase() === loc.toLowerCase();
-              return (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => setLocalityQuery(loc)}
-                  className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    active
-                      ? 'bg-navy text-white'
-                      : 'bg-sand-200 text-navy/70 hover:bg-navy/10'
-                  }`}
-                >
-                  {loc}
-                </button>
-              );
-            })}
-          </div>
+        <div className="p-4">
+          <label className="label">Neighborhood</label>
+          <NeighborhoodSelector value={neighborhood} onChange={setNeighborhood} includeAll />
         </div>
 
         <div className="border-t border-navy/5 px-4 py-3">
@@ -227,19 +129,24 @@ export default function CustomerSearch() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-navy/55">
-          {loading
-            ? 'Searching…'
-            : `${tailors.length} tailor${tailors.length === 1 ? '' : 's'}${
-                matchedLocality ? ` in ${matchedLocality}` : ' across Mumbai'
-              }`}
-        </p>
-        {byLocality.length > 0 && !matchedLocality && (
-          <p className="text-xs text-navy/40">
-            {byLocality.length} localities with approved makers
-          </p>
-        )}
+        <p className="text-sm text-navy/55">{resultLabel}</p>
+        <button
+          type="button"
+          className="btn-ghost text-sm"
+          onClick={() => setShowMap((v) => !v)}
+        >
+          {showMap ? 'Hide map' : 'Show map'}
+        </button>
       </div>
+
+      {showMap && !loading && tailors.length > 0 && (
+        <TailorMap
+          tailors={tailors}
+          center={mapCenter}
+          selectedId={highlightId}
+          onPinClick={setHighlightId}
+        />
+      )}
 
       {error && (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
@@ -270,9 +177,15 @@ export default function CustomerSearch() {
           {tailors.map((tailor) => {
             const name = businessName(tailor);
             const rating = tailor.averageRating ?? 0;
+            const highlighted = highlightId === tailor._id;
             return (
               <li key={tailor._id}>
-                <article className="card-surface flex h-full flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-saffron/30">
+                <article
+                  className={`card-surface flex h-full flex-col overflow-hidden transition hover:-translate-y-0.5 ${
+                    highlighted ? 'border-saffron ring-2 ring-saffron/30' : 'hover:border-saffron/30'
+                  }`}
+                  onMouseEnter={() => setHighlightId(tailor._id)}
+                >
                   <div className="h-2 bg-gradient-to-r from-navy via-navy-700 to-saffron" />
                   <div className="flex flex-1 flex-col p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -280,9 +193,17 @@ export default function CustomerSearch() {
                         <h2 className="truncate font-display text-lg font-semibold text-navy">
                           {name}
                         </h2>
+                        {tailor.isVerifiedArtisan && (
+                          <VerifiedArtisanBadge size="sm" className="mt-1" />
+                        )}
                         <p className="mt-0.5 text-sm font-medium text-saffron-600">
-                          {tailor.locality}
+                          {tailor.neighborhood || tailor.locality}
                         </p>
+                        {tailor.distanceKm != null && (
+                          <p className="text-xs font-medium text-navy/50">
+                            {formatDistance(tailor.distanceKm)}
+                          </p>
+                        )}
                       </div>
                       <div className="shrink-0 text-right">
                         <StarRating value={rating} readOnly size="sm" />

@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
+import VerificationChecklist from '../components/VerificationChecklist';
+import VerifiedArtisanBadge from '../components/VerifiedArtisanBadge';
+
+const emptyChecks = () => ({
+  shopLicense: false,
+  identityProof: false,
+  portfolioReview: false,
+});
 
 /**
- * Admin Approval View — table of unapproved tailors + one-click Approve
+ * Admin Approval View — verify credentials + approve tailors for platform visibility
  */
 export default function AdminDashboard() {
   const [tailors, setTailors] = useState([]);
   const [services, setServices] = useState([]);
+  const [verification, setVerification] = useState({});
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState(null);
   const [error, setError] = useState('');
@@ -38,18 +47,29 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
+  const setChecks = (id, checks) => {
+    setVerification((prev) => ({ ...prev, [id]: checks }));
+  };
+
   const approveTailor = async (id) => {
     setError('');
     setMessage('');
     setApprovingId(id);
     try {
-      await api.put(`/admin/tailors/${id}/approve`, {
+      const checks = verification[id] || emptyChecks();
+      const { data } = await api.put(`/admin/tailors/${id}/approve`, {
         approved: true,
         isApproved: true,
         approvalStatus: 'approved',
+        verification: checks,
       });
       setTailors((prev) => prev.filter((t) => t._id !== id));
-      setMessage('Tailor approved — now searchable on the platform');
+      const verified = data.tailor?.isVerifiedArtisan;
+      setMessage(
+        verified
+          ? 'Tailor approved with Verified Artisan badge'
+          : 'Tailor approved — visible in search (no verification checks selected)'
+      );
     } catch (err) {
       setError(err.message);
       await load();
@@ -104,8 +124,11 @@ export default function AdminDashboard() {
           </p>
           <h1 className="font-display text-3xl font-bold text-navy">Pending reviews</h1>
           <p className="text-navy/60">
-            Approve unapproved tailor profiles so they appear in customer search
+            Verify shop license, identity, or portfolio — then approve for full search visibility
           </p>
+          <div className="mt-2">
+            <VerifiedArtisanBadge size="sm" />
+          </div>
         </div>
         <button type="button" className="btn-ghost text-sm" onClick={load} disabled={loading}>
           {loading ? 'Refreshing…' : 'Refresh'}
@@ -165,7 +188,13 @@ export default function AdminDashboard() {
                     </div>
                     <p className="text-xs text-navy/50">
                       {(t.specialties || []).join(', ') || 'No specialties'}
+                      {t.portfolioCount != null && ` · ${t.portfolioCount} portfolio item(s)`}
                     </p>
+                    <VerificationChecklist
+                      compact
+                      value={verification[t._id] || emptyChecks()}
+                      onChange={(checks) => setChecks(t._id, checks)}
+                    />
                     <button
                       type="button"
                       className="btn-primary w-full"
@@ -196,6 +225,9 @@ export default function AdminDashboard() {
                     <th scope="col" className="px-4 py-3 font-semibold">
                       Status
                     </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Verification
+                    </th>
                     <th scope="col" className="px-4 py-3 font-semibold text-right">
                       Action
                     </th>
@@ -218,9 +250,21 @@ export default function AdminDashboard() {
                           <span className="line-clamp-2">
                             {(t.specialties || []).join(', ') || '—'}
                           </span>
+                          {t.portfolioCount > 0 && (
+                            <p className="mt-1 text-xs text-navy/45">
+                              {t.portfolioCount} portfolio photo(s)
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <StatusBadge status={t.approvalStatus || 'pending'} />
+                        </td>
+                        <td className="min-w-[200px] px-4 py-3">
+                          <VerificationChecklist
+                            compact
+                            value={verification[t._id] || emptyChecks()}
+                            onChange={(checks) => setChecks(t._id, checks)}
+                          />
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex gap-2">

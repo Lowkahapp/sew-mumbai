@@ -3,7 +3,8 @@ import Booking from '../models/Booking.js';
 import Service from '../models/Service.js';
 import TailorProfile from '../models/TailorProfile.js';
 import CustomerMeasurement from '../models/CustomerMeasurement.js';
-import { LOCALITIES } from '../constants/localities.js';
+import { LOCALITIES } from '../constants/neighborhoods.js';
+import { PROGRESS_STAGE_ORDER, nextProgressStage } from '../constants/bookingProgress.js';
 
 const formatErrors = (req) => {
   const errors = validationResult(req);
@@ -16,7 +17,8 @@ export const createBooking = async (req, res) => {
     const msgs = formatErrors(req);
     if (msgs) return res.status(400).json({ message: msgs[0], errors: msgs });
 
-    const { tailorId, serviceId, locality, notes, preferredDate, measurementId } = req.body;
+    const { tailorId, serviceId, locality, notes, preferredDate, measurementId, homeVisitRequested } =
+      req.body;
 
     if (!LOCALITIES.includes(locality)) {
       return res.status(400).json({ message: 'Invalid locality' });
@@ -35,6 +37,15 @@ export const createBooking = async (req, res) => {
       approvalStatus: 'approved',
     });
     if (!service) return res.status(404).json({ message: 'Service not available' });
+
+    const wantsHomeVisit = Boolean(homeVisitRequested);
+    if (wantsHomeVisit && (!tailor.homeVisitEnabled || !tailor.homeVisitFee)) {
+      return res.status(400).json({ message: 'This tailor does not offer home visits' });
+    }
+
+    const visitFee = wantsHomeVisit ? tailor.homeVisitFee : 0;
+    const servicePrice = service.price;
+    const totalPrice = servicePrice + visitFee;
 
     let measurements = { label: '', garmentType: '', unit: 'in', values: {} };
     if (measurementId) {
@@ -60,7 +71,10 @@ export const createBooking = async (req, res) => {
       locality,
       notes: notes || '',
       preferredDate,
-      price: service.price,
+      servicePrice,
+      homeVisitRequested: wantsHomeVisit,
+      homeVisitFee: visitFee,
+      price: totalPrice,
       status: 'requested',
       measurements,
     });
@@ -150,6 +164,15 @@ export const updateBookingStatus = async (req, res) => {
     }
 
     booking.status = status;
+    if (status === 'accepted') {
+      booking.progressStage = 'accepted';
+    }
+    if (status === 'completed') {
+      booking.progressStage = 'ready';
+    }
+    if (status === 'rejected' || status === 'cancelled') {
+      booking.progressStage = 'none';
+    }
     await booking.save();
 
     const populated = await Booking.findById(booking._id)
@@ -161,5 +184,54 @@ export const updateBookingStatus = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to update booking' });
+  }
+};
+
+export const updateBookingProgress = async (req, res) => {
+  try {
+    const msgs = formatErrors(req);
+    if (msgs) return res.status(400).json({ message: msgs[0], errors: msgs });
+
+    const { progressStage } = req.body;
+    if (!PROGRESS_STAGE_ORDER.includes(progressStage)) {
+      return res.status(400).json({ message: 'Invalid progress stage' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (req.user.role !== 'tailor') {
+      return res.status(403).json({ message: 'Only tailors can update progress' });
+    }
+
+    const profile = await TailorProfile.findOne({ user: req.user._id });
+    if (!profile || String(booking.tailor) !== String(profile._id)) {
+      return res.status(403).json({ message: 'Not your booking' });
+    }
+
+    if (booking.status !== 'accepted') {
+      return res.status(400).json({ message: 'Progress can only be updated for accepted bookings' });
+    }
+
+    const current = booking.progressStage || 'accepted';
+    const expectedNext = nextProgressStage(current);
+    if (progressStage !== current && progressStage !== expectedNext) {
+      return res.status(400).json({
+        message: `Progress must advance one step at a time (next: ${expectedNext || 'complete job'})`,
+      });
+    }
+
+    booking.progressStage = progressStage;
+    await booking.save();
+
+    const populated = await Booking.findById(booking._id)
+      .populate('customer', 'name email phone')
+      .populate({ path: 'tailor', populate: { path: 'user', select: 'name email phone' } })
+      .populate('service');
+
+    res.json({ booking: populated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to update progress' });
   }
 };
