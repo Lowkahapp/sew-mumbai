@@ -10,8 +10,8 @@ import TailorMapPopup from './TailorMapPopup';
 const MUMBAI_CENTER = [19.076, 72.8777];
 const DEFAULT_ZOOM = 11;
 
-/** Carto Dark Matter — high contrast for rose markers */
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+/** Carto Voyager — clean light map, rose markers stand out */
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
@@ -35,6 +35,25 @@ function createClusterIcon(cluster) {
     iconSize: L.point(48, 48),
     iconAnchor: L.point(24, 24),
   });
+}
+
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const fix = () => map.invalidateSize({ animate: false });
+    map.whenReady(fix);
+    const t1 = window.setTimeout(fix, 100);
+    const t2 = window.setTimeout(fix, 400);
+    window.addEventListener('resize', fix);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.removeEventListener('resize', fix);
+    };
+  }, [map]);
+
+  return null;
 }
 
 function MapBoundsController({ pins, center, fitKey }) {
@@ -119,10 +138,10 @@ export default function TailorMap({
   );
 
   return (
-    <div className="tailor-map-shell overflow-hidden rounded-2xl border border-navy/20 bg-navy shadow-soft">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-navy-800/80 px-4 py-3 backdrop-blur-sm">
+    <div className="tailor-map-shell isolate overflow-hidden rounded-2xl border border-navy/10 bg-white shadow-soft">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-navy/8 bg-navy px-4 py-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-saffron">
             Map view
           </p>
           <p className="text-sm font-medium text-white/90">
@@ -130,25 +149,29 @@ export default function TailorMap({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-white/70">
+          <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-medium text-white/85">
             {pins.length} tailor{pins.length === 1 ? '' : 's'}
           </span>
-          <span className="hidden rounded-full border border-rose-500/30 bg-rose-600/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-rose-300 sm:inline">
-            Dark Matter
-          </span>
+          {loading && (
+            <span className="rounded-full border border-saffron/40 bg-saffron/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-saffron-100">
+              Updating…
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative h-[420px] w-full">
         <MapContainer
           center={MUMBAI_CENTER}
           zoom={DEFAULT_ZOOM}
-          className="tailor-map-container z-0 h-[min(440px,62vh)] w-full min-h-[320px]"
+          className="tailor-map-container h-full w-full"
+          style={{ height: '420px', width: '100%' }}
           scrollWheelZoom
           zoomControl
         >
           <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} />
 
+          <MapResizeHandler />
           <MapBoundsController pins={pins} center={center} fitKey={fitKey} />
           <MapFlyToController selectedId={selectedId} pins={pins} />
 
@@ -193,23 +216,15 @@ export default function TailorMap({
           </MarkerClusterGroup>
         </MapContainer>
 
-        {loading && (
-          <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center bg-navy/40 backdrop-blur-[2px]">
-            <span className="rounded-full border border-white/10 bg-navy-800/90 px-4 py-2 text-xs font-medium text-white/80 shadow-soft">
-              Updating map…
-            </span>
-          </div>
-        )}
-
         {pins.length === 0 && !loading && (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 z-[500] -translate-x-1/2 rounded-full border border-white/10 bg-navy-800/95 px-4 py-2 text-xs font-medium text-white/60 shadow-soft">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 z-[1000] -translate-x-1/2 rounded-full border border-navy/10 bg-white/95 px-4 py-2 text-xs font-medium text-navy/60 shadow-soft">
             No pins for this filter — zoom in to explore clusters
           </div>
         )}
       </div>
 
-      <p className="border-t border-white/10 bg-navy-900/50 px-4 py-2.5 text-center text-xs text-white/45">
-        Clusters expand as you zoom · click a pin for details · selected marker pulses rose
+      <p className="border-t border-navy/8 bg-sand-100 px-4 py-2.5 text-center text-xs text-navy/50">
+        Drag to pan · scroll to zoom · click a pin for tailor details
       </p>
     </div>
   );

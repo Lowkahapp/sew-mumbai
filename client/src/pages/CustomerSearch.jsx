@@ -97,8 +97,30 @@ export default function CustomerSearch() {
         </p>
       </header>
 
-      <div className="card-surface">
-        <div className="relative z-10 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-navy/55">{resultLabel}</p>
+        <button
+          type="button"
+          className="btn-ghost text-sm"
+          onClick={() => setShowMap((v) => !v)}
+        >
+          {showMap ? 'Hide map' : 'Show map'}
+        </button>
+      </div>
+
+      {showMap && (
+        <TailorMap
+          tailors={tailors}
+          center={mapCenter}
+          selectedId={highlightId}
+          onPinClick={handlePinClick}
+          loading={loading}
+          fitKey={mapFitKey}
+        />
+      )}
+
+      <div className="card-surface relative overflow-visible">
+        <div className="p-4">
           <label className="label">Neighborhood</label>
           <NeighborhoodSelector value={neighborhood} onChange={setNeighborhood} includeAll />
         </div>
@@ -139,28 +161,6 @@ export default function CustomerSearch() {
           </div>
         </div>
       </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-navy/55">{resultLabel}</p>
-        <button
-          type="button"
-          className="btn-ghost text-sm"
-          onClick={() => setShowMap((v) => !v)}
-        >
-          {showMap ? 'Hide map' : 'Show map'}
-        </button>
-      </div>
-
-      {showMap && (
-        <TailorMap
-          tailors={tailors}
-          center={mapCenter}
-          selectedId={highlightId}
-          onPinClick={handlePinClick}
-          loading={loading}
-          fitKey={mapFitKey}
-        />
-      )}
 
       {error && (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
